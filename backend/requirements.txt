@@ -3,5 +3,5 @@ uvicorn
 python-multipart
 pandas
 sqlalchemy
-passlib[bcrypt]
+bcrypt
 pyjwt
