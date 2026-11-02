@@ -6,7 +6,8 @@ export default function App() {
   const [data, setData] = useState<any>(null);
   const [correlationResult, setCorrelationResult] = useState<any>(null);
 
-  const API_URL = "scm-backend.orangewave-b633448d.centralindia.azurecontainerapps.io"; 
+  // Added https:// prefix to ensure standard web protocol routing
+  const API_URL = "https://scm-backend.orangewave-b633448d.centralindia.azurecontainerapps.io"; 
 
   const handleLogin = async () => {
     try {
@@ -30,7 +31,6 @@ export default function App() {
     }
   };
 
-  // NEW: Function to handle the CSV file upload
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) return;
     
@@ -79,7 +79,7 @@ export default function App() {
                 {data ? (
                   Object.entries(data.metrics).map(([key, value]) => (
                     <div key={key} className="bg-slate-100 p-6 rounded-lg border border-slate-200 shadow-sm">
-                      <p className="text-sm text-slate-500 uppercase font-bold">{key.replace('_', ' ')}</p>
+                      <p className="text-sm text-slate-500 uppercase font-bold">{key.replace(/_/g, ' ')}</p>
                       <p className="text-3xl font-light text-blue-900 mt-2">{String(value)}</p>
                     </div>
                   ))
