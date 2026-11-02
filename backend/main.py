@@ -10,6 +10,7 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     frontend_url,
+    "https://scm-frontend.wittycoast-8732c29e.centralindia.azurecontainerapps.io"
 ]
 
 app.add_middleware(
