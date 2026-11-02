@@ -10,17 +10,29 @@ export default function App() {
   const API_URL = "https://scm-backend.wittycoast-8732c29e.centralindia.azurecontainerapps.io"; 
 
   const handleLogin = async () => {
-    try {
-      const res = await fetch(`${API_URL}/api/login?username=admin`, { method: 'POST' });
-      const json = await res.json();
-      if (json.token) {
-        setTab('dashboard');
-        loadDashboard();
-      }
-    } catch (error) {
-      console.error("Connection failed", error);
+  try {
+    const res = await fetch(`${API_URL}/api/login`, { 
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username: "admin", password: "admin123" })
+    });
+    
+    if (!res.ok) {
+      throw new Error("Invalid credentials");
     }
-  };
+
+    const json = await res.json();
+    if (json.token) {
+      setTab('dashboard');
+      loadDashboard();
+    }
+  } catch (error) {
+    console.error("Connection failed", error);
+    alert("Login failed. Check console for details.");
+  }
+};
 
   const loadDashboard = async () => {
     try {

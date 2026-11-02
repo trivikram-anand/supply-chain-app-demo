@@ -40,7 +40,7 @@ def get_db():
         yield db
     finally:
         db.close()
-        
+
 app = FastAPI()
 
 # Allow cross-origin requests from your frontend
@@ -60,9 +60,41 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from pydantic import BaseModel
+
+# NEW: Define the structure of the data the frontend will send
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+# NEW: Automatically create an admin user when the server starts
+@app.on_event("startup")
+def create_admin_user():
+    db = SessionLocal()
+    admin = db.query(User).filter(User.username == "admin").first()
+    if not admin:
+        hashed_pw = pwd_context.hash("admin123")
+        new_admin = User(username="admin", hashed_password=hashed_pw)
+        db.add(new_admin)
+        db.commit()
+    db.close()
+
+# NEW: Real database login endpoint
 @app.post("/api/login")
-async def mock_login(username: str):
-    return {"token": "mock_jwt_token_123", "status": "success"}
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    # 1. Look up the user in the SQLite database
+    user = db.query(User).filter(User.username == request.username).first()
+    
+    # 2. Check if user exists and password hash matches
+    if not user or not pwd_context.verify(request.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    
+    # 3. Generate a real JWT valid for 1 hour
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    token_data = {"sub": user.username, "exp": expiration}
+    token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+    
+    return {"token": token, "status": "success"}
 
 @app.get("/api/dashboard")
 async def get_dashboard_data():
