@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import pandas as pd
 import io
+from pydantic import BaseModel
 
 # NEW: Database and Security Imports
 from sqlalchemy import create_engine, Column, Integer, String
@@ -49,7 +50,7 @@ origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     frontend_url,
-    "https://scm-frontend.wittycoast-8732c29e.centralindia.azurecontainerapps.io"
+    "https://scm-frontend.wittycoast-8732c29e.centralindia.azurecontainerapps.io/ "
 ]
 
 app.add_middleware(
@@ -59,8 +60,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-from pydantic import BaseModel
 
 # NEW: Define the structure of the data the frontend will send
 class LoginRequest(BaseModel):
