@@ -79,7 +79,8 @@ def create_admin_user():
     db.close()
 
 # NEW: Real database login endpoint
-@app.post("/api/login")
+# NEW: Real database login endpoint (Renamed to bypass cloud cache)
+@app.post("/api/auth/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     # 1. Look up the user in the SQLite database
     user = db.query(User).filter(User.username == request.username).first()
