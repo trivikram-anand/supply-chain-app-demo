@@ -1,9 +1,46 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import os
-import pandas as pd 
+import pandas as pd
 import io
 
+# NEW: Database and Security Imports
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from passlib.context import CryptContext
+import jwt
+import datetime
+
+# NEW: SQLite Database Configuration
+SQLALCHEMY_DATABASE_URL = "sqlite:///./scm_database.db"
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# NEW: Define the User Table
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+
+# NEW: Create the table in the database file
+Base.metadata.create_all(bind=engine)
+
+# NEW: Password Hashing Configuration
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+SECRET_KEY = "super_secret_supply_chain_key_change_in_production"
+ALGORITHM = "HS256"
+
+# Dependency to get the database session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        
 app = FastAPI()
 
 # Allow cross-origin requests from your frontend
