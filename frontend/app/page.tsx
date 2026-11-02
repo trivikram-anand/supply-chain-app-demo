@@ -14,7 +14,7 @@ export default function Home() {
 
   const API_URL =
     process.env.NEXT_PUBLIC_API_URL ||
-    "https://scm-frontend.wittycoast-8732c29e.centralindia.azurecontainerapps.io/";
+    "https://scm-backend.wittycoast-8732c29e.centralindia.azurecontainerapps.io";
 
   const handleLogin = async () => {
     setLoginError("");
