@@ -7,7 +7,7 @@ export default function App() {
   const [correlationResult, setCorrelationResult] = useState<any>(null);
 
   // Added https:// prefix to ensure standard web protocol routing
-  const API_URL = "https://scm-backend.orangewave-b633448d.centralindia.azurecontainerapps.io"; 
+  const API_URL = "https://scm-backend.wittycoast-8732c29e.centralindia.azurecontainerapps.io"; 
 
   const handleLogin = async () => {
     try {
