@@ -3,8 +3,8 @@ import { useState } from "react";
 
 export default function Home() {
   const [tab, setTab] = useState("login");
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
   const [metrics, setMetrics] = useState<Record<string, any> | null>(null);
