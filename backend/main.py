@@ -19,6 +19,9 @@ ALGORITHM = "HS256"
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./scm_database.db")
 
 if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
+    # Force SQLAlchemy to use the installed psycopg2 driver instead of looking for psycopg v3
+    if SQLALCHEMY_DATABASE_URL.startswith("postgresql://") and not SQLALCHEMY_DATABASE_URL.startswith("postgresql+psycopg2://"):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
     engine = create_engine(SQLALCHEMY_DATABASE_URL)
 else:
     engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
