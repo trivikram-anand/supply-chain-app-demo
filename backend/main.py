@@ -69,33 +69,54 @@ def seed_database():
             db.add(new_admin)
             db.commit()
 
-        # 2. Create Raw Supply Chain Orders Table using Explicit SQL
+        # 2. DROP Old Schema and CREATE Normalized Schema
+        db.execute(text("DROP TABLE IF EXISTS supply_chain_orders;"))
+        db.execute(text("DROP TABLE IF EXISTS products;"))
+        
+        # Dimension Table: Products
         db.execute(text("""
-            CREATE TABLE IF NOT EXISTS supply_chain_orders (
-                order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            CREATE TABLE products (
+                sku TEXT PRIMARY KEY,
+                product_name TEXT,
+                category TEXT,
+                unit_cost REAL
+            )
+        """))
+        
+        # Fact Table: Orders (Now includes Dates and Status for advanced KPIs)
+        db.execute(text("""
+            CREATE TABLE supply_chain_orders (
+                order_id TEXT PRIMARY KEY,
                 sku TEXT,
                 ordered_qty INTEGER,
                 delivered_qty INTEGER,
-                on_time INTEGER,
-                cogs REAL,
-                inventory_value REAL
+                order_date DATE,
+                promised_date DATE,
+                actual_delivery_date DATE,
+                status TEXT,
+                FOREIGN KEY(sku) REFERENCES products(sku)
             )
         """))
         db.commit()
 
-        # 3. Check if rows exist; if empty, INSERT raw supply chain records
-        row_count = db.execute(text("SELECT COUNT(*) FROM supply_chain_orders")).scalar()
-        if row_count == 0:
-            db.execute(text("""
-                INSERT INTO supply_chain_orders (sku, ordered_qty, delivered_qty, on_time, cogs, inventory_value)
-                VALUES 
-                    ('SKU-101-PUMP', 500, 490, 1, 125000.0, 22000.0),
-                    ('SKU-102-VALVE', 300, 285, 1, 85000.0, 15000.0),
-                    ('SKU-103-MOTOR', 200, 195, 1, 210000.0, 35000.0),
-                    ('SKU-104-SENSOR', 450, 410, 0, 95000.0, 18000.0),
-                    ('SKU-105-GEAR', 600, 595, 1, 165000.0, 28000.0)
-            """))
-            db.commit()
+        # 3. Seed Normalized Data
+        db.execute(text("""
+            INSERT INTO products (sku, product_name, category, unit_cost) VALUES 
+            ('M1001', 'High-Pressure Pump', 'Hydraulics', 125.00),
+            ('M1002', 'Flow Valve', 'Control', 85.00),
+            ('M1003', 'Rotary Motor', 'Drive', 210.00);
+        """))
+        
+        db.execute(text("""
+            INSERT INTO supply_chain_orders 
+            (order_id, sku, ordered_qty, delivered_qty, order_date, promised_date, actual_delivery_date, status) 
+            VALUES 
+            ('ORD-001', 'M1001', 100, 100, '2026-10-25', '2026-10-30', '2026-10-28', 'Fulfilled'),
+            ('ORD-002', 'M1001', 200, 150, '2026-10-28', '2026-11-02', '2026-11-04', 'Partial'),
+            ('ORD-003', 'M1002', 150, 0, '2026-11-01', '2026-11-05', NULL, 'Pending'),
+            ('ORD-004', 'M1003', 50, 50, '2026-11-02', '2026-11-10', '2026-11-03', 'Fulfilled');
+        """))
+        db.commit()
     finally:
         db.close()
 
@@ -123,20 +144,39 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
 
 @app.get("/api/dashboard")
 def get_dashboard_data(db: Session = Depends(get_db)):
-    # 1. Execute SQL Aggregation Query to calculate KPIs dynamically from the table
+    # 1. Advanced KPI Aggregation (Using JOINs and conditional CASE statements)
     kpi_query = text("""
         SELECT 
-            ROUND((CAST(SUM(delivered_qty) AS FLOAT) / SUM(ordered_qty)) * 100, 1) AS fill_rate,
-            ROUND(SUM(cogs) / SUM(inventory_value), 2) AS inv_turnover,
-            ROUND(AVG(CAST(on_time AS FLOAT)) * 100, 1) AS otd_rate
-        FROM supply_chain_orders
+            -- Order Fill Rate (%)
+            ROUND((CAST(SUM(o.delivered_qty) AS FLOAT) / SUM(o.ordered_qty)) * 100, 1) AS fill_rate,
+            
+            -- On-Time Delivery (%)
+            ROUND((CAST(SUM(CASE WHEN o.actual_delivery_date <= o.promised_date THEN 1 ELSE 0 END) AS FLOAT) / 
+                   COUNT(CASE WHEN o.status IN ('Fulfilled', 'Partial') THEN 1 END)) * 100, 1) AS otd_rate,
+                   
+            -- Open Orders
+            SUM(CASE WHEN o.status IN ('Pending', 'Partial') THEN 1 ELSE 0 END) AS open_orders,
+            
+            -- Value of Pending Inventory (Ordered minus Delivered * Unit Cost)
+            SUM((o.ordered_qty - o.delivered_qty) * p.unit_cost) AS pending_inventory_value
+        FROM supply_chain_orders o
+        JOIN products p ON o.sku = p.sku
     """)
     kpi_row = db.execute(kpi_query).fetchone()
 
-    # 2. Execute SQL SELECT Query to fetch the raw inventory rows for the frontend table
+    # 2. Fetch Joined Table Data for Frontend
     orders_query = text("""
-        SELECT order_id, sku, ordered_qty, delivered_qty, on_time, cogs, inventory_value 
-        FROM supply_chain_orders
+        SELECT 
+            o.order_id, 
+            o.sku, 
+            p.product_name,
+            o.ordered_qty, 
+            o.delivered_qty, 
+            o.order_date,
+            o.status 
+        FROM supply_chain_orders o
+        JOIN products p ON o.sku = p.sku
+        ORDER BY o.order_date DESC
     """)
     orders_rows = db.execute(orders_query).fetchall()
 
@@ -144,11 +184,11 @@ def get_dashboard_data(db: Session = Depends(get_db)):
         {
             "order_id": r[0],
             "sku": r[1],
-            "ordered_qty": r[2],
-            "delivered_qty": r[3],
-            "on_time": "Yes" if r[4] == 1 else "Delayed",
-            "cogs": r[5],
-            "inventory_value": r[6]
+            "product_name": r[2],
+            "ordered_qty": r[3],
+            "delivered_qty": r[4],
+            "order_date": r[5],
+            "status": r[6]
         }
         for r in orders_rows
     ]
@@ -156,8 +196,9 @@ def get_dashboard_data(db: Session = Depends(get_db)):
     return {
         "metrics": {
             "Order_Fill_Rate": f"{kpi_row[0]}%",
-            "Inventory_Turnover": kpi_row[1],
-            "On_Time_Delivery": f"{kpi_row[2]}%"
+            "On_Time_Delivery": f"{kpi_row[1]}%",
+            "Open_Orders": int(kpi_row[2] or 0),
+            "Pending_Inventory_Value": f"${kpi_row[3]:,.2f}" if kpi_row[3] else "$0.00"
         },
         "orders": orders_list
     }
@@ -186,3 +227,4 @@ async def upload_csv(file: UploadFile = File(...)):
         }
     except Exception as e:
         return {"filename": file.filename, "correlation_score": "Error", "message": str(e)}
+    
