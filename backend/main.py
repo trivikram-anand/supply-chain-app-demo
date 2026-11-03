@@ -11,9 +11,14 @@ import jwt
 import datetime
 import numpy as np
 
-# SQLite Database Configuration
-SQLALCHEMY_DATABASE_URL = "sqlite:///./scm_database.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
+# PostgreSQL Cloud Database Configuration (falls back to SQLite for local testing)
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./scm_database.db")
+
+# PostgreSQL doesn't need "check_same_thread", so we strip it if connected to Azure
+if SQLALCHEMY_DATABASE_URL.startswith("postgresql"):
+    engine = create_engine(SQLALCHEMY_DATABASE_URL)
+else:
+    engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -110,8 +115,8 @@ def seed_database():
             db.commit()
 
         # 2. DROP Old Schema and CREATE Normalized Schema
-        db.execute(text("DROP TABLE IF EXISTS supply_chain_orders;"))
-        db.execute(text("DROP TABLE IF EXISTS products;"))
+        db.execute(text("DROP TABLE IF EXISTS supply_chain_orders CASCADE;"))
+        db.execute(text("DROP TABLE IF EXISTS products CASCADE;"))
         
         # Dimension Table: Products
         db.execute(text("""
