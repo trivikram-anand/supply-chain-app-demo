@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ComposedChart, Scatter, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 const API_URL = "https://scm-backend.wittycoast-8732c29e.centralindia.azurecontainerapps.io";
 
@@ -11,8 +12,6 @@ export default function Dashboard() {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [file, setFile] = useState<File | null>(null);
   const [correlationResult, setCorrelationResult] = useState<any>(null);
-  
-  // Tab state for navigation
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -79,24 +78,33 @@ export default function Dashboard() {
     }
   };
 
+  const getInterpretation = (score: number | string) => {
+    if (score === "Error" || typeof score !== "number") return "";
+    if (score >= 0.7) return "Strong positive relationship (+1)";
+    if (score <= -0.7) return "Strong negative relationship (-1)";
+    if (score > -0.3 && score < 0.3) return "No linear relationship (0)";
+    if (score > 0) return "Moderate positive relationship";
+    return "Moderate negative relationship";
+  };
+
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-lg w-96">
-          <h2 className="text-2xl font-bold mb-6 text-center text-blue-600">SCM Portal Login</h2>
+      <div className="min-h-screen flex items-center justify-center bg-[#0f172a]">
+        <form onSubmit={handleLogin} className="bg-[#1e293b] p-8 rounded-xl shadow-lg w-96 text-white border border-gray-700">
+          <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">SCM Portal Login</h2>
           <input
             type="text"
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full mb-4 p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-black"
+            className="w-full mb-4 p-3 border border-gray-600 rounded bg-[#0f172a] text-white focus:outline-none focus:border-blue-500"
           />
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full mb-6 p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-black"
+            className="w-full mb-6 p-3 border border-gray-600 rounded bg-[#0f172a] text-white focus:outline-none focus:border-blue-500"
           />
           <button type="submit" className="w-full bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition">
             Login
@@ -107,93 +115,86 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 text-black">
-      {/* Bright Corporate Blue Top Navigation Bar */}
-      <nav className="bg-blue-600 text-white p-4 shadow-md">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold tracking-wide">Control Tower</h1>
-          
-          <div className="flex items-center space-x-6">
-            <div className="flex space-x-2 border-r border-blue-400 pr-6">
-              <button 
-                onClick={() => setActiveTab("dashboard")}
-                className={`px-4 py-2 rounded font-semibold transition ${activeTab === "dashboard" ? "bg-blue-700 shadow-inner" : "hover:bg-blue-500"}`}
-              >
-                Overview
-              </button>
-              <button 
-                onClick={() => setActiveTab("analytics")}
-                className={`px-4 py-2 rounded font-semibold transition ${activeTab === "analytics" ? "bg-blue-700 shadow-inner" : "hover:bg-blue-500"}`}
-              >
-                Demand Analytics
-              </button>
-            </div>
-            
-            {/* Restored Logout Button */}
-            <button 
-              onClick={handleLogout}
-              className="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded font-bold transition shadow-sm"
-            >
-              Logout
-            </button>
-          </div>
+    <div className="min-h-screen bg-[#0f172a] text-white p-8">
+      
+      {/* Header exactly mapping to the screenshot */}
+      <div className="max-w-7xl mx-auto flex justify-between items-center mb-10">
+        <h1 className="text-3xl font-bold text-blue-400 tracking-wide">Supply Chain Control Tower</h1>
+        <div className="flex space-x-4 items-center">
+          <button 
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-4 py-2 rounded font-semibold transition ${activeTab === "dashboard" ? "bg-blue-600" : "bg-[#1e293b] hover:bg-gray-700"}`}
+          >
+            SQL KPI Dashboard
+          </button>
+          <button 
+            onClick={() => setActiveTab("analytics")}
+            className={`px-4 py-2 rounded font-semibold transition ${activeTab === "analytics" ? "bg-blue-600" : "bg-[#1e293b] hover:bg-gray-700"}`}
+          >
+            Demand Correlation
+          </button>
+          <button 
+            onClick={handleLogout}
+            className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded font-bold transition ml-4"
+          >
+            Logout
+          </button>
         </div>
-      </nav>
+      </div>
 
-      <main className="max-w-7xl mx-auto p-8">
+      <main className="max-w-7xl mx-auto">
         
         {/* TAB 1: OVERVIEW DASHBOARD */}
         {activeTab === "dashboard" && dashboardData && (
           <div className="animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
-                <h3 className="text-gray-500 text-sm font-semibold uppercase">Order Fill Rate</h3>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{dashboardData.metrics.Order_Fill_Rate}</p>
+            <h2 className="text-xl font-bold text-white mb-4">Live SQL-Calculated KPIs</h2>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+              <div className="bg-[#1e293b] p-6 rounded-lg shadow-sm">
+                <h3 className="text-gray-400 text-sm mb-2">Order Fill Rate</h3>
+                <p className="text-4xl font-bold text-blue-400">{dashboardData.metrics.Order_Fill_Rate}</p>
               </div>
-              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
-                <h3 className="text-gray-500 text-sm font-semibold uppercase">On-Time Delivery</h3>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{dashboardData.metrics.On_Time_Delivery}</p>
+              <div className="bg-[#1e293b] p-6 rounded-lg shadow-sm">
+                <h3 className="text-gray-400 text-sm mb-2">On Time Delivery</h3>
+                <p className="text-4xl font-bold text-blue-400">{dashboardData.metrics.On_Time_Delivery}</p>
               </div>
-              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-red-500">
-                <h3 className="text-gray-500 text-sm font-semibold uppercase">Open Orders</h3>
-                <p className="text-3xl font-bold text-red-600 mt-2">{dashboardData.metrics.Open_Orders}</p>
+              <div className="bg-[#1e293b] p-6 rounded-lg shadow-sm">
+                <h3 className="text-gray-400 text-sm mb-2">Open Orders</h3>
+                <p className="text-4xl font-bold text-blue-400">{dashboardData.metrics.Open_Orders}</p>
               </div>
-              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-purple-500">
-                <h3 className="text-gray-500 text-sm font-semibold uppercase">Pending Inv. Value</h3>
-                <p className="text-3xl font-bold text-gray-800 mt-2">{dashboardData.metrics.Pending_Inventory_Value}</p>
+              <div className="bg-[#1e293b] p-6 rounded-lg shadow-sm">
+                <h3 className="text-gray-400 text-sm mb-2">Pending Inv. Value</h3>
+                <p className="text-4xl font-bold text-blue-400">{dashboardData.metrics.Pending_Inventory_Value}</p>
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow overflow-x-auto">
-              <h3 className="text-xl font-bold text-gray-800 mb-4">Operational Order Log</h3>
+            <h2 className="text-xl font-bold text-white mb-4">Underlying SQL Table: supply_chain_orders</h2>
+            <div className="bg-[#1e293b] rounded-lg shadow-sm overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-100 text-gray-700">
-                    <th className="p-3 border-b font-semibold">Order ID</th>
-                    <th className="p-3 border-b font-semibold">SKU</th>
-                    <th className="p-3 border-b font-semibold">Product Name</th>
-                    <th className="p-3 border-b font-semibold">Ordered</th>
-                    <th className="p-3 border-b font-semibold">Delivered</th>
-                    <th className="p-3 border-b font-semibold">Order Date</th>
-                    <th className="p-3 border-b font-semibold">Status</th>
+                  <tr className="bg-[#1e293b] border-b border-gray-700">
+                    <th className="p-4 font-semibold text-white">Order ID</th>
+                    <th className="p-4 font-semibold text-white">SKU</th>
+                    <th className="p-4 font-semibold text-white">Product</th>
+                    <th className="p-4 font-semibold text-white">Ordered Qty</th>
+                    <th className="p-4 font-semibold text-white">Delivered Qty</th>
+                    <th className="p-4 font-semibold text-white">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {dashboardData.orders.map((order: any, idx: number) => (
-                    <tr key={idx} className="border-b hover:bg-gray-50 transition">
-                      <td className="p-3 font-medium">{order.order_id}</td>
-                      <td className="p-3 text-gray-500">{order.sku}</td>
-                      <td className="p-3">{order.product_name}</td>
-                      <td className="p-3">{order.ordered_qty}</td>
-                      <td className="p-3">{order.delivered_qty}</td>
-                      <td className="p-3">{order.order_date}</td>
-                      <td className="p-3">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                          order.status === 'Fulfilled' ? 'bg-green-100 text-green-800' :
-                          order.status === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
+                    <tr key={idx} className="border-b border-gray-800 hover:bg-[#0f172a] transition">
+                      <td className="p-4">{order.order_id}</td>
+                      <td className="p-4 text-blue-400">{order.sku}</td>
+                      <td className="p-4">{order.product_name}</td>
+                      <td className="p-4">{order.ordered_qty}</td>
+                      <td className="p-4">{order.delivered_qty}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${
+                          order.status === 'Fulfilled' ? 'bg-green-900 text-green-400' :
+                          order.status === 'Partial' ? 'bg-yellow-900 text-yellow-400' :
+                          'bg-red-900 text-red-400'
                         }`}>
-                          {order.status}
+                          {order.status === 'Fulfilled' ? 'Yes' : order.status === 'Partial' ? 'Partial' : 'Delayed'}
                         </span>
                       </td>
                     </tr>
@@ -206,35 +207,66 @@ export default function Dashboard() {
 
         {/* TAB 2: DEMAND ANALYTICS */}
         {activeTab === "analytics" && (
-          <div className="animate-fade-in bg-white p-8 rounded-xl shadow">
-            <h3 className="text-2xl font-bold text-gray-800 mb-6">Demand Analytics</h3>
-            <p className="text-gray-600 mb-6">Upload a CSV file to calculate Pearson correlation between demand variables.</p>
+          <div className="animate-fade-in bg-[#1e293b] p-8 rounded-lg shadow-sm">
+            <h2 className="text-xl font-bold text-white mb-6">Demand Analytics</h2>
             
-            <form onSubmit={handleFileUpload} className="flex gap-4 items-center bg-gray-50 p-6 rounded border border-gray-200">
+            <form onSubmit={handleFileUpload} className="flex gap-4 items-center mb-8">
               <input 
                 type="file" 
                 accept=".csv" 
                 onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-                className="border bg-white p-2 rounded w-full md:w-auto text-black"
+                className="bg-[#0f172a] border border-gray-600 text-white p-2 rounded"
               />
               <button type="submit" className="bg-blue-600 text-white font-bold px-6 py-2 rounded hover:bg-blue-700 transition">
-                Analyze Data
+                Analyze
               </button>
             </form>
             
             {correlationResult && (
-              <div className={`mt-6 p-6 rounded border ${correlationResult.correlation_score === "Error" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
-                <h4 className="font-bold text-lg mb-2">Analysis Results</h4>
-                <p className="mb-1"><span className="font-semibold">File:</span> {correlationResult.filename}</p>
-                <p className="mb-1"><span className="font-semibold">Status:</span> {correlationResult.message}</p>
-                {correlationResult.correlation_score !== "Error" && (
-                  <p className="text-xl mt-4"><span className="font-semibold">Correlation Score:</span> <span className="text-blue-700 font-bold">{correlationResult.correlation_score}</span></p>
+              <div className="bg-[#0f172a] p-6 rounded border border-gray-700">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-2">Pearson Correlation</h3>
+                    <p className="text-gray-400">X-Axis: <span className="text-blue-400">{correlationResult.col_x}</span></p>
+                    <p className="text-gray-400">Y-Axis: <span className="text-blue-400">{correlationResult.col_y}</span></p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-4xl font-bold text-blue-400">{correlationResult.correlation_score}</p>
+                    <p className="text-gray-400 mt-1">{getInterpretation(correlationResult.correlation_score)}</p>
+                  </div>
+                </div>
+
+                {/* Scatter Plot with Trend Line */}
+                {correlationResult.data_points && (
+                  <div className="h-80 w-full mt-8">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                        <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
+                        <XAxis dataKey="x" type="number" name={correlationResult.col_x} stroke="#94a3b8" />
+                        <YAxis dataKey="y" type="number" name={correlationResult.col_y} stroke="#94a3b8" />
+                        <Tooltip 
+                          cursor={{ strokeDasharray: '3 3' }} 
+                          contentStyle={{ backgroundColor: '#1e293b', border: 'none', color: '#fff' }}
+                        />
+                        <Scatter data={correlationResult.data_points} fill="#60a5fa" />
+                        {/* Overlay the Trend Line calculation */}
+                        <Line 
+                          data={correlationResult.trend_line} 
+                          type="linear" 
+                          dataKey="trend" 
+                          stroke="#ef4444" 
+                          strokeWidth={3} 
+                          dot={false} 
+                          activeDot={false} 
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
               </div>
             )}
           </div>
         )}
-
       </main>
     </div>
   );

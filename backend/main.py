@@ -9,6 +9,7 @@ import pandas as pd
 import bcrypt
 import jwt
 import datetime
+import numpy as np
 
 # SQLite Database Configuration
 SQLALCHEMY_DATABASE_URL = "sqlite:///./scm_database.db"
@@ -211,20 +212,34 @@ async def upload_csv(file: UploadFile = File(...)):
         numeric_df = df.select_dtypes(include=['number'])
         
         if numeric_df.shape[1] < 2:
-            return {
-                "filename": file.filename, 
-                "correlation_score": "N/A",
-                "message": "Error: CSV requires at least two numeric columns."
-            }
+            return {"correlation_score": "Error", "message": "CSV requires at least two numeric columns."}
         
         col1, col2 = numeric_df.columns[0], numeric_df.columns[1]
-        correlation = numeric_df[col1].corr(numeric_df[col2])
+        
+        # Drop empty rows to prevent math errors
+        clean_df = numeric_df[[col1, col2]].dropna()
+        correlation = clean_df[col1].corr(clean_df[col2])
+        
+        # Generate Scatter Data (cap at 500 points for browser performance)
+        plot_df = clean_df.head(500)
+        data_points = plot_df.rename(columns={col1: "x", col2: "y"}).to_dict(orient="records")
+        
+        # Calculate Trend Line (Linear Regression)
+        slope, intercept = np.polyfit(clean_df[col1], clean_df[col2], 1)
+        min_x, max_x = float(clean_df[col1].min()), float(clean_df[col1].max())
+        trend_line = [
+            {"x": min_x, "trend": float(slope * min_x + intercept)},
+            {"x": max_x, "trend": float(slope * max_x + intercept)}
+        ]
         
         return {
-            "filename": file.filename, 
+            "filename": file.filename,
+            "col_x": col1,
+            "col_y": col2,
             "correlation_score": round(correlation, 4),
+            "data_points": data_points,
+            "trend_line": trend_line,
             "message": f"Successfully correlated '{col1}' vs '{col2}'"
         }
     except Exception as e:
-        return {"filename": file.filename, "correlation_score": "Error", "message": str(e)}
-    
+        return {"correlation_score": "Error", "message": str(e)}
