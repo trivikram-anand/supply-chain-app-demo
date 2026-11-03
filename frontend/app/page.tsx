@@ -35,6 +35,16 @@ export default function Dashboard() {
     }
   };
 
+  const handleLogout = () => {
+    setToken("");
+    setUsername("");
+    setPassword("");
+    setDashboardData(null);
+    setCorrelationResult(null);
+    setFile(null);
+    setActiveTab("dashboard");
+  };
+
   const fetchDashboard = async (authToken: string) => {
     try {
       const res = await fetch(`${API_URL}/api/dashboard`, {
@@ -71,22 +81,22 @@ export default function Dashboard() {
 
   if (!token) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-900">
-        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-2xl w-96">
-          <h2 className="text-2xl font-bold mb-6 text-center text-blue-900">SCM Portal</h2>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <form onSubmit={handleLogin} className="bg-white p-8 rounded-xl shadow-lg w-96">
+          <h2 className="text-2xl font-bold mb-6 text-center text-blue-600">SCM Portal Login</h2>
           <input
             type="text"
             placeholder="Username"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full mb-4 p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-600 text-black"
+            className="w-full mb-4 p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-black"
           />
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full mb-6 p-3 border rounded focus:outline-none focus:ring-2 focus:ring-blue-600 text-black"
+            className="w-full mb-6 p-3 border border-gray-300 rounded focus:outline-none focus:border-blue-500 text-black"
           />
           <button type="submit" className="w-full bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition">
             Login
@@ -97,23 +107,34 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 text-black">
-      {/* Blue Top Navigation Bar */}
-      <nav className="bg-blue-800 text-white p-4 shadow-md">
+    <div className="min-h-screen bg-gray-50 text-black">
+      {/* Bright Corporate Blue Top Navigation Bar */}
+      <nav className="bg-blue-600 text-white p-4 shadow-md">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-wide">Control Tower</h1>
-          <div className="flex space-x-2">
+          
+          <div className="flex items-center space-x-6">
+            <div className="flex space-x-2 border-r border-blue-400 pr-6">
+              <button 
+                onClick={() => setActiveTab("dashboard")}
+                className={`px-4 py-2 rounded font-semibold transition ${activeTab === "dashboard" ? "bg-blue-700 shadow-inner" : "hover:bg-blue-500"}`}
+              >
+                Overview
+              </button>
+              <button 
+                onClick={() => setActiveTab("analytics")}
+                className={`px-4 py-2 rounded font-semibold transition ${activeTab === "analytics" ? "bg-blue-700 shadow-inner" : "hover:bg-blue-500"}`}
+              >
+                Demand Analytics
+              </button>
+            </div>
+            
+            {/* Restored Logout Button */}
             <button 
-              onClick={() => setActiveTab("dashboard")}
-              className={`px-4 py-2 rounded font-semibold transition ${activeTab === "dashboard" ? "bg-blue-600 shadow-inner" : "hover:bg-blue-700"}`}
+              onClick={handleLogout}
+              className="bg-white text-blue-600 hover:bg-gray-100 px-4 py-2 rounded font-bold transition shadow-sm"
             >
-              Overview
-            </button>
-            <button 
-              onClick={() => setActiveTab("analytics")}
-              className={`px-4 py-2 rounded font-semibold transition ${activeTab === "analytics" ? "bg-blue-600 shadow-inner" : "hover:bg-blue-700"}`}
-            >
-              Demand Analytics
+              Logout
             </button>
           </div>
         </div>
@@ -124,32 +145,30 @@ export default function Dashboard() {
         {/* TAB 1: OVERVIEW DASHBOARD */}
         {activeTab === "dashboard" && dashboardData && (
           <div className="animate-fade-in">
-            {/* Actionable KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-xl shadow-sm border-t-4 border-blue-500">
+              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-blue-500">
                 <h3 className="text-gray-500 text-sm font-semibold uppercase">Order Fill Rate</h3>
-                <p className="text-4xl font-bold text-blue-900 mt-2">{dashboardData.metrics.Order_Fill_Rate}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{dashboardData.metrics.Order_Fill_Rate}</p>
               </div>
-              <div className="bg-white p-6 rounded-xl shadow-sm border-t-4 border-green-500">
+              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-green-500">
                 <h3 className="text-gray-500 text-sm font-semibold uppercase">On-Time Delivery</h3>
-                <p className="text-4xl font-bold text-blue-900 mt-2">{dashboardData.metrics.On_Time_Delivery}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{dashboardData.metrics.On_Time_Delivery}</p>
               </div>
-              <div className="bg-white p-6 rounded-xl shadow-sm border-t-4 border-red-500">
+              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-red-500">
                 <h3 className="text-gray-500 text-sm font-semibold uppercase">Open Orders</h3>
-                <p className="text-4xl font-bold text-red-600 mt-2">{dashboardData.metrics.Open_Orders}</p>
+                <p className="text-3xl font-bold text-red-600 mt-2">{dashboardData.metrics.Open_Orders}</p>
               </div>
-              <div className="bg-white p-6 rounded-xl shadow-sm border-t-4 border-purple-500">
+              <div className="bg-white p-6 rounded-xl shadow border-l-4 border-purple-500">
                 <h3 className="text-gray-500 text-sm font-semibold uppercase">Pending Inv. Value</h3>
-                <p className="text-4xl font-bold text-blue-900 mt-2">{dashboardData.metrics.Pending_Inventory_Value}</p>
+                <p className="text-3xl font-bold text-gray-800 mt-2">{dashboardData.metrics.Pending_Inventory_Value}</p>
               </div>
             </div>
 
-            {/* Upgraded Orders Table */}
-            <div className="bg-white p-6 rounded-xl shadow-sm overflow-x-auto">
-              <h3 className="text-xl font-bold text-blue-900 mb-4">Operational Order Log</h3>
+            <div className="bg-white p-6 rounded-xl shadow overflow-x-auto">
+              <h3 className="text-xl font-bold text-gray-800 mb-4">Operational Order Log</h3>
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-blue-50 text-blue-900">
+                  <tr className="bg-gray-100 text-gray-700">
                     <th className="p-3 border-b font-semibold">Order ID</th>
                     <th className="p-3 border-b font-semibold">SKU</th>
                     <th className="p-3 border-b font-semibold">Product Name</th>
@@ -169,7 +188,7 @@ export default function Dashboard() {
                       <td className="p-3">{order.delivered_qty}</td>
                       <td className="p-3">{order.order_date}</td>
                       <td className="p-3">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
                           order.status === 'Fulfilled' ? 'bg-green-100 text-green-800' :
                           order.status === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
                           'bg-red-100 text-red-800'
@@ -187,24 +206,24 @@ export default function Dashboard() {
 
         {/* TAB 2: DEMAND ANALYTICS */}
         {activeTab === "analytics" && (
-          <div className="animate-fade-in bg-white p-8 rounded-xl shadow-sm">
-            <h3 className="text-2xl font-bold text-blue-900 mb-6">Demand Analytics</h3>
+          <div className="animate-fade-in bg-white p-8 rounded-xl shadow">
+            <h3 className="text-2xl font-bold text-gray-800 mb-6">Demand Analytics</h3>
             <p className="text-gray-600 mb-6">Upload a CSV file to calculate Pearson correlation between demand variables.</p>
             
-            <form onSubmit={handleFileUpload} className="flex gap-4 items-center bg-blue-50 p-6 rounded-lg border border-blue-100">
+            <form onSubmit={handleFileUpload} className="flex gap-4 items-center bg-gray-50 p-6 rounded border border-gray-200">
               <input 
                 type="file" 
                 accept=".csv" 
                 onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-                className="border border-blue-200 bg-white p-2 rounded w-full md:w-auto"
+                className="border bg-white p-2 rounded w-full md:w-auto text-black"
               />
-              <button type="submit" className="bg-blue-600 text-white font-bold px-6 py-2 rounded hover:bg-blue-700 transition shadow">
+              <button type="submit" className="bg-blue-600 text-white font-bold px-6 py-2 rounded hover:bg-blue-700 transition">
                 Analyze Data
               </button>
             </form>
             
             {correlationResult && (
-              <div className={`mt-6 p-6 rounded-lg border ${correlationResult.correlation_score === "Error" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
+              <div className={`mt-6 p-6 rounded border ${correlationResult.correlation_score === "Error" ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"}`}>
                 <h4 className="font-bold text-lg mb-2">Analysis Results</h4>
                 <p className="mb-1"><span className="font-semibold">File:</span> {correlationResult.filename}</p>
                 <p className="mb-1"><span className="font-semibold">Status:</span> {correlationResult.message}</p>
