@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
+from fastapi.security import OAuth2PasswordBearer
+import jwt
 import os
 import io
 import pandas as pd
@@ -286,3 +288,69 @@ async def upload_csv(file: UploadFile = File(...)):
         }
     except Exception as e:
         return {"correlation_score": "Error", "message": str(e)}
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
+def verify_token(token: str = Depends(oauth2_scheme)):
+    try:
+        # SECRET_KEY and ALGORITHM should already be defined at the top of your main.py
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("sub")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+@app.post("/api/orders/upload")
+async def upload_orders(
+    file: UploadFile = File(...), 
+    db: Session = Depends(get_db), 
+    current_user: str = Depends(verify_token)
+):
+    if not file.filename.endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Only CSV files are accepted.")
+    
+    try:
+        contents = await file.read()
+        df = pd.read_csv(io.BytesIO(contents))
+        
+        # 1. Clean Headers: remove hidden spaces, lowercase, replace inner spaces with underscores
+        df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+        
+        required_cols = ['order_id', 'sku', 'ordered_qty', 'delivered_qty', 'status']
+        for col in required_cols:
+            if col not in df.columns:
+                return {"status": "error", "message": f"CSV missing required column: '{col}'"}
+        
+        # 2. Clean Data: Drop missing IDs, convert text to numbers, fill blanks with safe defaults
+        df = df.dropna(subset=['order_id', 'sku'])
+        df['ordered_qty'] = pd.to_numeric(df['ordered_qty'], errors='coerce').fillna(0)
+        df['delivered_qty'] = pd.to_numeric(df['delivered_qty'], errors='coerce').fillna(0)
+        df['status'] = df['status'].fillna('Pending').str.strip().str.title()
+        
+        if 'order_date' not in df.columns:
+            df['order_date'] = pd.Timestamp.today().strftime('%Y-%m-%d')
+            
+        orders_to_insert = df.to_dict(orient="records")
+        successful_inserts = 0
+        
+        # 3. PostgreSQL UPSERT: Insert new orders, update existing ones
+        for order in orders_to_insert:
+            try:
+                db.execute(text("""
+                    INSERT INTO supply_chain_orders 
+                    (order_id, sku, ordered_qty, delivered_qty, order_date, status) 
+                    VALUES (:order_id, :sku, :ordered_qty, :delivered_qty, :order_date, :status)
+                    ON CONFLICT (order_id) DO UPDATE SET
+                        ordered_qty = EXCLUDED.ordered_qty,
+                        delivered_qty = EXCLUDED.delivered_qty,
+                        status = EXCLUDED.status;
+                """), order)
+                successful_inserts += 1
+            except Exception as e:
+                db.rollback() # Skip row if SKU foreign key fails
+                continue
+                
+        db.commit()
+        return {"status": "success", "message": f"Successfully processed {successful_inserts} orders."}
+        
+    except Exception as e:
+        return {"status": "error", "message": f"Data processing failed: {str(e)}"}

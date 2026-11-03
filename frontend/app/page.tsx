@@ -18,6 +18,35 @@ export default function Dashboard() {
   // New states for interactive filters
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [orderFile, setOrderFile] = useState<File | null>(null);
+  const [isUploadingOrders, setIsUploadingOrders] = useState(false);
+
+  const handleOrderUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderFile) return;
+    setIsUploadingOrders(true);
+    
+    const formData = new FormData();
+    formData.append("file", orderFile);
+
+    try {
+      const res = await fetch(`${API_URL}/api/orders/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      alert(data.message || data.detail);
+      
+      // Instantly refresh the KPIs and table if upload succeeds
+      if (res.ok) fetchDashboard(token); 
+    } catch (error) {
+      alert("Order upload failed.");
+    } finally {
+      setIsUploadingOrders(false);
+      setOrderFile(null);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,8 +245,27 @@ export default function Dashboard() {
             <div className="flex justify-between items-end mb-4">
               <h2 className="text-xl font-bold text-white">Detailed Order Fulfillment Log</h2>
               
-              {/* Interactive Filters UI */}
-              <div className="flex gap-4">
+              {/* Interactive Filters & Data Ingestion UI */}
+              <div className="flex gap-4 items-center">
+                
+                {/* New Order Upload Form */}
+                <form onSubmit={handleOrderUpload} className="flex items-center gap-2 border-r border-gray-600 pr-4">
+                  <input 
+                    type="file" 
+                    accept=".csv"
+                    onChange={(e) => setOrderFile(e.target.files ? e.target.files[0] : null)}
+                    className="text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-[#1e293b] file:text-blue-400 hover:file:bg-gray-700 cursor-pointer w-48"
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={!orderFile || isUploadingOrders}
+                    className="bg-green-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-green-700 transition disabled:opacity-50"
+                  >
+                    {isUploadingOrders ? "Uploading..." : "Upload Orders"}
+                  </button>
+                </form>
+
+                {/* Existing Search and Status Filters */}
                 <input 
                   type="text" 
                   placeholder="Search SKU or Order ID..." 
