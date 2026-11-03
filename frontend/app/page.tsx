@@ -9,25 +9,35 @@ export default function Dashboard() {
   const [token, setToken] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [file, setFile] = useState<File | null>(null);
   const [correlationResult, setCorrelationResult] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    const endpoint = isRegistering ? "/api/auth/register" : "/api/auth/login";
+    
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
       const data = await res.json();
+      
       if (res.ok) {
-        setToken(data.token);
-        fetchDashboard(data.token);
+        if (isRegistering) {
+          alert(data.message);
+          setIsRegistering(false); // Flip back to login view
+          setPassword(""); // Clear password for safety
+        } else {
+          setToken(data.token);
+          fetchDashboard(data.token);
+        }
       } else {
-        alert(data.detail || "Login failed");
+        alert(data.detail || "Authentication failed");
       }
     } catch (error) {
       alert("Error connecting to backend.");
@@ -90,8 +100,10 @@ export default function Dashboard() {
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0f172a]">
-        <form onSubmit={handleLogin} className="bg-[#1e293b] p-8 rounded-xl shadow-lg w-96 text-white border border-gray-700">
-          <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">SCM Portal Login</h2>
+        <form onSubmit={handleAuth} className="bg-[#1e293b] p-8 rounded-xl shadow-lg w-96 text-white border border-gray-700">
+          <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">
+            {isRegistering ? "Create Account" : "SCM Portal Login"}
+          </h2>
           <input
             type="text"
             placeholder="Username"
@@ -107,8 +119,18 @@ export default function Dashboard() {
             className="w-full mb-6 p-3 border border-gray-600 rounded bg-[#0f172a] text-white focus:outline-none focus:border-blue-500"
           />
           <button type="submit" className="w-full bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition">
-            Login
+            {isRegistering ? "Sign Up" : "Login"}
           </button>
+          
+          <div className="mt-4 text-center">
+            <button 
+              type="button" 
+              onClick={() => setIsRegistering(!isRegistering)} 
+              className="text-sm text-gray-400 hover:text-blue-400 transition"
+            >
+              {isRegistering ? "Already have an account? Log in" : "Don't have an account? Sign up"}
+            </button>
+          </div>
         </form>
       </div>
     );
@@ -117,7 +139,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#0f172a] text-white p-8">
       
-      {/* Header exactly mapping to the screenshot */}
       <div className="max-w-7xl mx-auto flex justify-between items-center mb-10">
         <h1 className="text-3xl font-bold text-blue-400 tracking-wide">Supply Chain Control Tower</h1>
         <div className="flex space-x-4 items-center">
@@ -125,7 +146,7 @@ export default function Dashboard() {
             onClick={() => setActiveTab("dashboard")}
             className={`px-4 py-2 rounded font-semibold transition ${activeTab === "dashboard" ? "bg-blue-600" : "bg-[#1e293b] hover:bg-gray-700"}`}
           >
-            SQL KPI Dashboard
+            Operational Dashboard
           </button>
           <button 
             onClick={() => setActiveTab("analytics")}
@@ -144,10 +165,9 @@ export default function Dashboard() {
 
       <main className="max-w-7xl mx-auto">
         
-        {/* TAB 1: OVERVIEW DASHBOARD */}
         {activeTab === "dashboard" && dashboardData && (
           <div className="animate-fade-in">
-            <h2 className="text-xl font-bold text-white mb-4">Live SQL-Calculated KPIs</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Key Performance Indicators</h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
               <div className="bg-[#1e293b] p-6 rounded-lg shadow-sm">
                 <h3 className="text-gray-400 text-sm mb-2">Order Fill Rate</h3>
@@ -167,7 +187,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <h2 className="text-xl font-bold text-white mb-4">Underlying SQL Table: supply_chain_orders</h2>
+            <h2 className="text-xl font-bold text-white mb-4">Detailed Order Fulfillment Log</h2>
             <div className="bg-[#1e293b] rounded-lg shadow-sm overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -205,7 +225,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* TAB 2: DEMAND ANALYTICS */}
         {activeTab === "analytics" && (
           <div className="animate-fade-in bg-[#1e293b] p-8 rounded-lg shadow-sm">
             <h2 className="text-xl font-bold text-white mb-6">Demand Analytics</h2>
@@ -236,7 +255,6 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Scatter Plot with Trend Line */}
                 {correlationResult.data_points && (
                   <div className="h-80 w-full mt-8">
                     <ResponsiveContainer width="100%" height="100%">
@@ -249,7 +267,6 @@ export default function Dashboard() {
                           contentStyle={{ backgroundColor: '#1e293b', border: 'none', color: '#fff' }}
                         />
                         <Scatter data={correlationResult.data_points} fill="#60a5fa" />
-                        {/* Overlay the Trend Line calculation */}
                         <Line 
                           data={correlationResult.trend_line} 
                           type="linear" 

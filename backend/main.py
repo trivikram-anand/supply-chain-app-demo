@@ -58,6 +58,45 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+
+@app.post("/api/auth/register")
+def register(request: RegisterRequest, db: Session = Depends(get_db)):
+    # 1. Check if the username is already taken
+    existing_user = db.query(User).filter(User.username == request.username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # 2. Hash the new password and save the user
+    hashed_pw = bcrypt.hashpw(request.password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    new_user = User(username=request.username, hashed_password=hashed_pw)
+    
+    db.add(new_user)
+    db.commit()
+
+@app.post("/api/auth/login")
+def login(request: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.username == request.username).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    
+    password_matches = bcrypt.checkpw(
+        request.password.encode("utf-8"), 
+        user.hashed_password.encode("utf-8")
+    )
+    if not password_matches:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+    
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+    token_data = {"sub": user.username, "exp": expiration}
+    token = jwt.encode(token_data, SECRET_KEY, algorithm=ALGORITHM)
+    if isinstance(token, bytes):
+        token = token.decode("utf-8")
+        
+    return {"token": token, "status": "success"}   
+
 @app.on_event("startup")
 def seed_database():
     db = SessionLocal()
@@ -121,7 +160,6 @@ def seed_database():
     finally:
         db.close()
 
-@app.post("/api/auth/login")
 @app.post("/api/login")
 def login(request: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == request.username).first()
