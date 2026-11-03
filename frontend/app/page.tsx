@@ -15,6 +15,10 @@ export default function Dashboard() {
   const [correlationResult, setCorrelationResult] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
 
+  // New states for interactive filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     const endpoint = isRegistering ? "/api/auth/register" : "/api/auth/login";
@@ -30,8 +34,8 @@ export default function Dashboard() {
       if (res.ok) {
         if (isRegistering) {
           alert(data.message);
-          setIsRegistering(false); // Flip back to login view
-          setPassword(""); // Clear password for safety
+          setIsRegistering(false);
+          setPassword(""); 
         } else {
           setToken(data.token);
           fetchDashboard(data.token);
@@ -52,6 +56,8 @@ export default function Dashboard() {
     setCorrelationResult(null);
     setFile(null);
     setActiveTab("dashboard");
+    setSearchTerm("");
+    setStatusFilter("All");
   };
 
   const fetchDashboard = async (authToken: string) => {
@@ -97,41 +103,61 @@ export default function Dashboard() {
     return "Moderate negative relationship";
   };
 
+  // Dynamic filter logic for the table
+  const filteredOrders = dashboardData?.orders.filter((order: any) => {
+    const matchesSearch = 
+      order.sku.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      order.order_id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "All" || order.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   if (!token) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0f172a]">
-        <form onSubmit={handleAuth} className="bg-[#1e293b] p-8 rounded-xl shadow-lg w-96 text-white border border-gray-700">
-          <h2 className="text-2xl font-bold mb-6 text-center text-blue-400">
-            {isRegistering ? "Create Account" : "SCM Portal Login"}
-          </h2>
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="w-full mb-4 p-3 border border-gray-600 rounded bg-[#0f172a] text-white focus:outline-none focus:border-blue-500"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full mb-6 p-3 border border-gray-600 rounded bg-[#0f172a] text-white focus:outline-none focus:border-blue-500"
-          />
-          <button type="submit" className="w-full bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition">
-            {isRegistering ? "Sign Up" : "Login"}
-          </button>
-          
-          <div className="mt-4 text-center">
-            <button 
-              type="button" 
-              onClick={() => setIsRegistering(!isRegistering)} 
-              className="text-sm text-gray-400 hover:text-blue-400 transition"
-            >
-              {isRegistering ? "Already have an account? Log in" : "Don't have an account? Sign up"}
-            </button>
+        <div className="bg-[#1e293b] p-8 rounded-xl shadow-lg w-96 text-white border border-gray-700">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-bold text-blue-400">
+              {isRegistering ? "Create Account" : "SCM Control Tower"}
+            </h2>
+            {/* Added details/info for the login page */}
+            {!isRegistering && (
+              <p className="text-gray-400 text-sm mt-2">
+                Log in to access live KPIs, operational order tracking, and statistical demand forecasting.
+              </p>
+            )}
           </div>
-        </form>
+
+          <form onSubmit={handleAuth}>
+            <input
+              type="text"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full mb-4 p-3 border border-gray-600 rounded bg-[#0f172a] text-white focus:outline-none focus:border-blue-500"
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full mb-6 p-3 border border-gray-600 rounded bg-[#0f172a] text-white focus:outline-none focus:border-blue-500"
+            />
+            <button type="submit" className="w-full bg-blue-600 text-white font-bold p-3 rounded hover:bg-blue-700 transition">
+              {isRegistering ? "Sign Up" : "Secure Login"}
+            </button>
+            
+            <div className="mt-4 text-center">
+              <button 
+                type="button" 
+                onClick={() => setIsRegistering(!isRegistering)} 
+                className="text-sm text-gray-400 hover:text-blue-400 transition"
+              >
+                {isRegistering ? "Already have an account? Log in" : "Don't have an account? Sign up"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     );
   }
@@ -187,7 +213,31 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <h2 className="text-xl font-bold text-white mb-4">Detailed Order Fulfillment Log</h2>
+            <div className="flex justify-between items-end mb-4">
+              <h2 className="text-xl font-bold text-white">Detailed Order Fulfillment Log</h2>
+              
+              {/* Interactive Filters UI */}
+              <div className="flex gap-4">
+                <input 
+                  type="text" 
+                  placeholder="Search SKU or Order ID..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-[#0f172a] border border-gray-600 text-white px-4 py-2 rounded focus:outline-none focus:border-blue-500"
+                />
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-[#0f172a] border border-gray-600 text-white px-4 py-2 rounded focus:outline-none focus:border-blue-500"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Fulfilled">Fulfilled</option>
+                  <option value="Partial">Partial</option>
+                  <option value="Pending">Pending</option>
+                </select>
+              </div>
+            </div>
+
             <div className="bg-[#1e293b] rounded-lg shadow-sm overflow-hidden">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -201,7 +251,7 @@ export default function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {dashboardData.orders.map((order: any, idx: number) => (
+                  {filteredOrders.map((order: any, idx: number) => (
                     <tr key={idx} className="border-b border-gray-800 hover:bg-[#0f172a] transition">
                       <td className="p-4">{order.order_id}</td>
                       <td className="p-4 text-blue-400">{order.sku}</td>
@@ -219,12 +269,18 @@ export default function Dashboard() {
                       </td>
                     </tr>
                   ))}
+                  {filteredOrders.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-gray-400">No orders match your filters.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         )}
 
+        {/* ... (Tab 2 Analytics remains unchanged) ... */}
         {activeTab === "analytics" && (
           <div className="animate-fade-in bg-[#1e293b] p-8 rounded-lg shadow-sm">
             <h2 className="text-xl font-bold text-white mb-6">Demand Analytics</h2>
